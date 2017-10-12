@@ -1,0 +1,93 @@
+---
+title: "Practical Machine Learning for Weight Lifting HAR"
+author: "Jason Huang"
+date: "2017-10-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview 
+
+Base on [the data of weight lifting exercises](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har#dataset), we will train a predict model on the weight lifting training data with a machine learning algorithm, then we will use the trained predict model to recognize activity of weight lifting exercises.  
+
+## Code Book 
+
+  classe - The fashions of Unilateral Dumbbell Biceps Curl 
+  
+        Class A : exactly according to the specification  
+        Class B : throwing the elbows to the front  
+        Class C : lifting the dumbbell only halfway  
+        Class D : lowering the dumbbell only halfway  
+        Class E : throwing the hips to the front  
+
+  belt/arm/forearm/dumbbell - The position of the sensing setup  
+  
+  roll/pitch/yaw - The Euler angles use to calculate features
+  
+  accel - Accelerometer  
+  
+  gyros - Gyroscope  
+  
+  magnet - Magnetometer  
+  
+  avg(mean)/var(variance)/stddev(standard deviation)/max/min/amplitude/kurtosis/skewness - Mathematical algorithm  
+  
+  num_window/new_window - The parameters of sliding window approach  
+  
+  user_name - The name of the exerciser
+
+  raw_timestamp_part_1/raw_timestamp_part2/cvtd_timestamp - Timestamp
+  
+## Check and Clean data
+
+  [[Training Data]](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)  
+  [[Testing Data]](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)  
+  
+```{r message=TRUE, warning=FALSE}
+  pml_training <- read.csv("pml-training.csv")
+  pml_testing <- read.csv("pml-testing.csv")
+  
+  # Remove the columns all value is na in the testing set.
+  training <- pml_training[,-which(apply(pml_testing,2,function(x)all(is.na(x))))]
+  testing <- pml_testing[,-which(apply(pml_testing,2,function(x)all(is.na(x))))]
+  
+  # Remove the datas which new_window is true, because all new_window is no in testing set.
+  training <- training[-which(training$new_window=='yes'),]
+  
+  # Remove the columns which no relation with classe.
+  # removed columns : X, user_name, raw_timestamp_part_1, raw_timestamp_part2, cvtd_timestamp, num_window, new_window  
+  training <- training[, -c(1:7)]
+  testing  <- testing[, -c(1:7)]
+  
+```
+
+## Build Model
+
+The traning model was built using the random forest method and 10-fold cross validation with center and scale preprocessing. A 10-fold cross validation was used to reduce the overfitting in random forest models.
+
+```{r message=FALSE, warning=FALSE}
+  
+  library(caret)
+  
+  set.seed(100)
+
+  modelFit <- train(classe~., data=training, ntree=150, preProcess=c("center","scale"), method="rf", trControl=trainControl(method="cv"))
+  
+
+```
+```{r message=TRUE, warning=FALSE}
+  print(modelFit)
+
+  plot(modelFit$finalModel, main="Random Forest Error Rates")
+```
+
+## Prediction
+
+Use the final model to predict on the testing dataset of 20 participants.
+
+```{r message=TRUE, warning=FALSE}
+  predict(modelFit, testing)
+```
